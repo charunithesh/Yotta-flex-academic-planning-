@@ -1,0 +1,191 @@
+{
+  "version": "1.0",
+  "id_conventions": {
+    "program": "PRG-000001",
+    "course": "CRS-000001",
+    "faculty": "FAC-000001",
+    "section": "SEC-2026-000001",
+    "workload_assignment": "WLA-2026-000001",
+    "student_plan": "PLN-00000001",
+    "registration_interest": "INT-00000001",
+    "room": "ROM-000001",
+    "ground_truth_case": "GTC-000001"
+  },
+  "entities": {
+    "Program": {
+      "table": "programs",
+      "primary_key": "id",
+      "relationships": "Program 1:N Course, StudentPlan, Faculty.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "PRG- followed by six digits", "validation": "Immutable primary key."},
+        "name": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "Synthetic Program NNN", "validation": "Non-empty; maximum 120 characters."},
+        "department": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "One of five synthetic departments", "validation": "Non-empty; maximum 80 characters."},
+        "lifecycle_state": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["active", "inactive", "retired"], "validation": "Defaults to active."}
+      }
+    },
+    "Course": {
+      "table": "courses",
+      "primary_key": "id",
+      "relationships": "Course N:1 Program; Course N:M Course through Prerequisite; Course 1:N RegistrationInterest, ForecastRecord, Section, UnmetDemand; Course N:M Faculty through FacultySkill.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "CRS- followed by six digits", "validation": "Immutable primary key."},
+        "program_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Program.id", "validation": "Foreign key to programs.id."},
+        "title": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Synthetic course title", "validation": "Non-empty; maximum 160 characters."},
+        "credits": {"type": "integer", "required": true, "unique": false, "units": "credits", "allowed": "1..6", "validation": "Database check constraint."},
+        "course_type": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["core", "elective"], "validation": "Database check constraint."},
+        "demand_profile": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["popular", "typical", "low"], "validation": "Synthetic source attribute; not a forecast label."},
+        "lifecycle_state": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["active", "inactive", "retired"], "validation": "Only active courses are forecast."}
+      }
+    },
+    "Prerequisite": {
+      "table": "prerequisites",
+      "primary_key": "id",
+      "relationships": "Course N:M Course; each row links one course to one prerequisite course. Optional effective_to.",
+      "fields": {
+        "id": {"type": "integer", "required": true, "unique": true, "units": null, "allowed": "Database generated", "validation": "Primary key."},
+        "course_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Course.id", "validation": "Foreign key; different from prerequisite_course_id."},
+        "prerequisite_course_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Course.id", "validation": "Foreign key; unique with course_id."},
+        "min_grade": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Synthetic grade, default C", "validation": "Maximum two characters."},
+        "effective_from": {"type": "date", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 date", "validation": "Must be on or before effective_to when effective_to is set."},
+        "effective_to": {"type": "date|null", "required": false, "unique": false, "units": null, "allowed": "ISO 8601 date or null", "validation": "Null means no scheduled end."}
+      }
+    },
+    "StudentPlan": {
+      "table": "student_plans",
+      "primary_key": "id",
+      "relationships": "StudentPlan N:1 Program; StudentPlan 1:N RegistrationInterest. student_ref repeats across terms; (student_ref, term) is unique.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "PLN- followed by eight digits", "validation": "Immutable primary key."},
+        "student_ref": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Synthetic STU reference; no personal data", "validation": "Unique with term."},
+        "program_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Program.id", "validation": "Foreign key to programs.id."},
+        "term": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "YYYY-Spring, YYYY-Summer, YYYY-Fall", "validation": "Must match the related RegistrationInterest term."},
+        "created_at": {"type": "datetime", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 datetime", "validation": "Synthetic planned date."}
+      }
+    },
+    "RegistrationInterest": {
+      "table": "registration_interests",
+      "primary_key": "id",
+      "relationships": "RegistrationInterest N:1 StudentPlan and Course. StudentPlan 1:N RegistrationInterest; Course 1:N RegistrationInterest.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "INT- followed by eight digits", "validation": "Immutable primary key."},
+        "student_plan_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing StudentPlan.id", "validation": "Foreign key; unique with course_id."},
+        "course_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Course.id in the plan's program", "validation": "Foreign key and program/term join validation."},
+        "term": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "YYYY-Spring, YYYY-Summer, YYYY-Fall", "validation": "Must equal StudentPlan.term."},
+        "status": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["registered", "waitlisted", "interested", "withdrawn"], "validation": "Database enum check; withdrawn excluded from demand."},
+        "created_at": {"type": "datetime", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 datetime", "validation": "Synthetic event timestamp."}
+      }
+    },
+    "Faculty": {
+      "table": "faculty",
+      "primary_key": "id",
+      "relationships": "Faculty N:1 Program; Faculty N:M Course through FacultySkill; Faculty 1:N Availability, WorkloadAssignment.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "FAC- followed by six digits", "validation": "Immutable primary key."},
+        "program_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Program.id", "validation": "Foreign key to programs.id."},
+        "weekly_workload_limit": {"type": "integer", "required": true, "unique": false, "units": "hours/week", "allowed": "1..40", "validation": "Database check; assignments may not exceed this total per term."},
+        "lifecycle_state": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["active", "inactive", "retired"], "validation": "Only active faculty are allocated."}
+      }
+    },
+    "FacultySkill": {
+      "table": "faculty_skills",
+      "primary_key": "id",
+      "relationships": "Faculty N:M Course; one row per effective faculty/course pair in this version.",
+      "fields": {
+        "id": {"type": "integer", "required": true, "unique": true, "units": null, "allowed": "Database generated", "validation": "Primary key."},
+        "faculty_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Faculty.id", "validation": "Foreign key; unique with course_id."},
+        "course_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Course.id", "validation": "Foreign key; assignments require a matching skill."},
+        "proficiency": {"type": "integer", "required": true, "unique": false, "units": "1..5 scale", "allowed": "1..5", "validation": "Database check constraint."},
+        "effective_from": {"type": "date", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 date", "validation": "Skill must be effective on the target term date."},
+        "effective_to": {"type": "date|null", "required": false, "unique": false, "units": null, "allowed": "ISO 8601 date or null", "validation": "Null means no scheduled end."}
+      }
+    },
+    "Availability": {
+      "table": "availabilities",
+      "primary_key": "id",
+      "relationships": "Faculty 1:N Availability; one availability state for each faculty/term/time-slot combination.",
+      "fields": {
+        "id": {"type": "integer", "required": true, "unique": true, "units": null, "allowed": "Database generated", "validation": "Primary key."},
+        "faculty_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Faculty.id", "validation": "Foreign key."},
+        "term": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "YYYY-Spring, YYYY-Summer, YYYY-Fall", "validation": "Unique with faculty_id and slot_code."},
+        "slot_code": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "D1..D5 and 08, 10, 12, 14, 16", "validation": "A weekly meeting slot."},
+        "state": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["available", "unavailable", "leave"], "validation": "Only available slots can be assigned."},
+        "effective_from": {"type": "date", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 date", "validation": "Must cover the target term date."},
+        "effective_to": {"type": "date", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 date", "validation": "Must be on or after effective_from."}
+      }
+    },
+    "Room": {
+      "table": "rooms",
+      "primary_key": "id",
+      "relationships": "Room 1:N Section.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "ROM- followed by six digits", "validation": "Immutable primary key."},
+        "building": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Synthetic Building NN", "validation": "Non-empty; maximum 40 characters."},
+        "capacity": {"type": "integer", "required": true, "unique": false, "units": "seats", "allowed": "1..500", "validation": "Section capacity may not exceed room capacity."},
+        "lifecycle_state": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["active", "inactive", "retired"], "validation": "Only active rooms are allocated."}
+      }
+    },
+    "Section": {
+      "table": "sections",
+      "primary_key": "id",
+      "relationships": "Course 1:N Section; Room 1:N Section; ForecastRun 1:N Section; Section 1:N WorkloadAssignment (allocation enforces exactly one active proposal).",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "SEC-YYYY- followed by six digits", "validation": "Immutable primary key."},
+        "run_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing ForecastRun.id", "validation": "Foreign key."},
+        "course_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Course.id", "validation": "Foreign key."},
+        "room_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Room.id", "validation": "Foreign key."},
+        "term": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "YYYY-Spring, YYYY-Summer, YYYY-Fall", "validation": "Term of the forecast run."},
+        "capacity": {"type": "integer", "required": true, "unique": false, "units": "seats", "allowed": "1..min(room capacity, policy cap)", "validation": "Positive; constraint checked during allocation."},
+        "scheduled_at": {"type": "datetime", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 datetime", "validation": "Prerequisite sections are scheduled in earlier weeks."},
+        "slot_code": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "D1..D5 and 08, 10, 12, 14, 16", "validation": "Room and faculty cannot be double-booked in a slot."},
+        "lifecycle_state": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["proposed", "approved", "cancelled"], "validation": "Proposal is not an approved published schedule."}
+      }
+    },
+    "WorkloadAssignment": {
+      "table": "workload_assignments",
+      "primary_key": "id",
+      "relationships": "Section N:1 Faculty and Section 1:N WorkloadAssignment; allocation currently proposes exactly one faculty per section.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "WLA-YYYY- followed by six digits", "validation": "Immutable primary key."},
+        "section_id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "Existing Section.id", "validation": "Foreign key; each section has at most one assignment."},
+        "faculty_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing Faculty.id", "validation": "Foreign key; must have an effective course skill."},
+        "weekly_hours": {"type": "integer", "required": true, "unique": false, "units": "hours/week", "allowed": "1..40", "validation": "Sum for faculty and term must not exceed faculty limit."},
+        "lifecycle_state": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["proposed", "approved", "cancelled"], "validation": "Proposal state; immutable changes are captured as new events."},
+        "created_at": {"type": "datetime", "required": true, "unique": false, "units": null, "allowed": "ISO 8601 datetime", "validation": "Creation timestamp for the allocation record."}
+      }
+    },
+    "GroundTruthCase": {
+      "table": "ground_truth_cases",
+      "primary_key": "id",
+      "relationships": "Labeled scenario references entity IDs as values, not operational foreign keys; kept out of forecast and allocation queries.",
+      "fields": {
+        "id": {"type": "string", "required": true, "unique": true, "units": null, "allowed": "GTC- followed by six digits", "validation": "Immutable scenario key."},
+        "issue_type": {"type": "string", "required": true, "unique": false, "units": null, "allowed": ["faculty_outside_skillset", "workload_exceeded", "section_capacity_too_low", "prerequisite_order_violation", "duplicate_section_assignment"], "validation": "Required anomaly label."},
+        "entity_type": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Scenario subject type", "validation": "Describes entity_id."},
+        "entity_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Existing ID or isolated scenario ID", "validation": "Not consumed as a model feature."},
+        "related_entity_id": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Related source ID", "validation": "Not consumed as a model feature."},
+        "expected_decision": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Documented expected workflow action", "validation": "Ground-truth decision label."},
+        "details": {"type": "string", "required": true, "unique": false, "units": null, "allowed": "Scenario explanation", "validation": "Maximum 240 characters."}
+      }
+    }
+  },
+  "workflow_tables": {
+    "ForecastRun": "One row per append-only planning run; stores target term, historical window, fixed seed and run status.",
+    "ForecastRecord": "One row per course and run; stores historical signal, current interest and derived enrollment forecast.",
+    "UnmetDemand": "One row per course/run requiring follow-up; includes seats, reason and explanation.",
+    "StateEvent": "Append-only audit events for forecast, proposed sections, assignments and unmet demand."
+  },
+  "relationship_cardinality": [
+    "Program 1:N Course",
+    "Program 1:N StudentPlan",
+    "Program 1:N Faculty",
+    "StudentPlan 1:N RegistrationInterest",
+    "Course 1:N RegistrationInterest",
+    "Faculty N:M Course through FacultySkill",
+    "Faculty 1:N Availability",
+    "Course N:M Course through Prerequisite",
+    "ForecastRun 1:N ForecastRecord, Section, UnmetDemand, StateEvent",
+    "Course 1:N Section",
+    "Room 1:N Section",
+    "Section 1:N WorkloadAssignment; each proposed section receives one assignment or is represented as unmet demand."
+  ]
+}
