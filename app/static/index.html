@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b2c">
+  <title>Yotta Flex | Academic Planning</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Yotta Flex home">
+        <span class="brand-mark">Y</span>
+        <span><strong>Yotta Flex</strong><small>ACADEMIC PLANNING</small></span>
+      </a>
+      <p class="nav-label">WORKSPACE</p>
+      <a class="nav-link active" href="#overview"><span class="nav-icon">◫</span> Overview</a>
+      <a class="nav-link" href="#runs"><span class="nav-icon">◷</span> Forecast runs</a>
+      <a class="nav-link" href="#exceptions"><span class="nav-icon">!</span> Exceptions & labels</a>
+      <a class="nav-link" href="#exports"><span class="nav-icon">⇩</span> Data exports</a>
+      <div class="sidebar-bottom">
+        <span class="status-dot"></span>
+        <span><strong>Planning engine</strong><small>Local · SQLite</small></span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">ACADEMIC OPERATIONS / PLANNING</div>
+          <h1>Demand & allocation</h1>
+        </div>
+        <div class="topbar-right">
+          <span class="term-chip"><span class="status-dot"></span> Planning workspace</span>
+          <a class="icon-link" href="/docs" target="_blank" rel="noreferrer" aria-label="Open API documentation">API ↗</a>
+        </div>
+      </header>
+
+      <div id="notice" class="notice" role="status" hidden></div>
+
+      <section id="overview">
+        <div class="section-heading">
+          <div><p class="eyebrow">OVERVIEW</p><h2>Planning at a glance</h2></div>
+          <button id="refreshButton" class="button button-quiet" type="button">↻ <span>Refresh</span></button>
+        </div>
+        <div class="metric-grid">
+          <article class="metric-card"><span class="metric-label">Programs</span><strong id="programCount">—</strong><span class="metric-note">Active catalog</span></article>
+          <article class="metric-card"><span class="metric-label">Courses</span><strong id="courseCount">—</strong><span class="metric-note">Across all programs</span></article>
+          <article class="metric-card"><span class="metric-label">Faculty</span><strong id="facultyCount">—</strong><span class="metric-note">With skills & availability</span></article>
+          <article class="metric-card"><span class="metric-label">Student plans</span><strong id="planCount">—</strong><span class="metric-note">Source planning records</span></article>
+        </div>
+      </section>
+
+      <section class="workbench">
+        <div class="panel setup-panel">
+          <div class="panel-heading">
+            <div><p class="eyebrow">WORKFLOW</p><h2>Build a planning run</h2></div>
+            <span class="step-badge">01 — 02</span>
+          </div>
+          <p class="panel-copy">Generate reproducible synthetic inputs, then forecast enrollment and propose sections with skill, availability, room and workload constraints.</p>
+          <div class="form-grid">
+            <label for="scaleSelect">Dataset scale
+              <select id="scaleSelect">
+                <option value="starter">Starter · 10 programs / 100 courses</option>
+                <option value="full">Full · 100 programs / 1,000 courses</option>
+              </select>
+            </label>
+            <label for="seedInput">Fixed seed
+              <input id="seedInput" type="number" min="0" max="2147483647" value="20261022">
+            </label>
+            <label for="termInput">Target term
+              <input id="termInput" type="text" value="2026-Fall" pattern="\d{4}-(Spring|Summer|Fall)">
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="generateButton" class="button button-secondary" type="button"><span class="button-icon">✳</span> Generate source data</button>
+            <button id="forecastButton" class="button button-primary" type="button"><span class="button-icon">↗</span> Forecast & allocate</button>
+          </div>
+          <div class="workflow-footnote"><span class="lock-icon">⌑</span> New runs are appended. Existing source data is never overwritten by the app.</div>
+        </div>
+        <div class="panel decision-panel">
+          <div class="panel-heading">
+            <div><p class="eyebrow">LATEST DECISION</p><h2 id="latestTerm">No run yet</h2></div>
+            <span id="latestStatus" class="status-pill status-idle">AWAITING DATA</span>
+          </div>
+          <div class="decision-summary">
+            <div><strong id="forecastSeats">—</strong><span>Forecast seats</span></div>
+            <div><strong id="allocatedSeats">—</strong><span>Allocated seats</span></div>
+            <div><strong id="unmetSeats">—</strong><span>Unmet demand</span></div>
+          </div>
+          <div class="reconcile">
+            <div class="reconcile-line"><span>Demand coverage</span><strong id="reconcileLabel">Waiting for a run</strong></div>
+            <div class="progress-track"><div id="utilizationBar" class="progress-fill"></div></div>
+            <div class="reconcile-foot"><span>Capacity utilization · demand coverage</span><span id="utilizationLabel">—</span></div>
+          </div>
+          <div id="latestRunLink" class="latest-run-link"></div>
+        </div>
+      </section>
+
+      <section id="runs" class="panel table-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">TRACEABILITY</p><h2>Forecast runs</h2></div>
+          <span id="runCountLabel" class="muted-label">0 runs</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Run / target term</th><th>Historical window</th><th>Forecast</th><th>Sections</th><th>Unmet</th><th>Validation</th></tr></thead>
+            <tbody id="runsTable"><tr><td class="empty-cell" colspan="6">Generate source data, then create a forecast run.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="details-grid">
+        <article class="panel detail-panel">
+          <div class="panel-heading"><div><p class="eyebrow">DEMAND SIGNALS</p><h2>Course forecast</h2></div><span class="muted-label">Historical + current interest</span></div>
+          <div class="table-wrap compact">
+            <table><thead><tr><th>Course</th><th>History</th><th>Interest</th><th>Forecast</th></tr></thead><tbody id="forecastTable"><tr><td class="empty-cell" colspan="4">Select a run to inspect its demand signals.</td></tr></tbody></table>
+          </div>
+        </article>
+        <article class="panel detail-panel" id="exceptions">
+          <div class="panel-heading"><div><p class="eyebrow">EXCEPTIONS</p><h2>Unmet demand</h2></div><span id="unmetBadge" class="exception-badge">0 courses</span></div>
+          <div class="table-wrap compact">
+            <table><thead><tr><th>Course</th><th>Unmet seats</th><th>Reason</th></tr></thead><tbody id="unmetTable"><tr><td class="empty-cell" colspan="3">No unmet demand recorded for the selected run.</td></tr></tbody></table>
+          </div>
+        </article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel">
+          <div class="panel-heading"><div><p class="eyebrow">EVALUATION FIXTURES</p><h2>Ground-truth scenarios</h2></div><a class="text-link" href="/tables/ground_truth_cases" target="_blank" rel="noopener">View table ↗</a></div>
+          <p class="panel-copy small-copy">Isolated labeled challenge cases. These records are excluded from forecasts and allocation features.</p>
+          <div id="scenarioList" class="scenario-list"><p class="muted-label">Generate data to load labeled scenarios.</p></div>
+        </article>
+        <article class="panel" id="exports">
+          <div class="panel-heading"><div><p class="eyebrow">PORTABLE DATA</p><h2>Operational exports</h2></div></div>
+          <p class="panel-copy small-copy">Open a colorful, searchable table in a new tab. Download the original CSV from inside each table.</p>
+          <div class="export-list">
+            <a href="/tables/programs" target="_blank" rel="noopener"><span>Programs</span><span>View table ↗</span></a>
+            <a href="/tables/courses" target="_blank" rel="noopener"><span>Course catalog</span><span>View table ↗</span></a>
+            <a href="/tables/prerequisites" target="_blank" rel="noopener"><span>Prerequisites</span><span>View table ↗</span></a>
+            <a href="/tables/student_plans" target="_blank" rel="noopener"><span>Student plans</span><span>View table ↗</span></a>
+            <a href="/tables/registration_interests" target="_blank" rel="noopener"><span>Registration interest</span><span>View table ↗</span></a>
+            <a href="/tables/faculty" target="_blank" rel="noopener"><span>Faculty</span><span>View table ↗</span></a>
+            <a href="/tables/faculty_skills" target="_blank" rel="noopener"><span>Faculty skills</span><span>View table ↗</span></a>
+            <a href="/tables/availabilities" target="_blank" rel="noopener"><span>Faculty availability</span><span>View table ↗</span></a>
+            <a href="/tables/rooms" target="_blank" rel="noopener"><span>Rooms</span><span>View table ↗</span></a>
+            <a href="/tables/forecast_runs" target="_blank" rel="noopener"><span>Forecast runs</span><span>View table ↗</span></a>
+            <a href="/tables/forecasts" target="_blank" rel="noopener"><span>Course forecasts</span><span>View table ↗</span></a>
+            <a href="/tables/sections" target="_blank" rel="noopener"><span>Proposed sections</span><span>View table ↗</span></a>
+            <a href="/tables/workload_assignments" target="_blank" rel="noopener"><span>Faculty assignments</span><span>View table ↗</span></a>
+            <a href="/tables/unmet_demand" target="_blank" rel="noopener"><span>Unmet demand</span><span>View table ↗</span></a>
+            <a href="/tables/state_events" target="_blank" rel="noopener"><span>Decision audit trail</span><span>View table ↗</span></a>
+          </div>
+        </article>
+      </section>
+      <footer><span>YOTTA FLEX · ACADEMIC PLANNING</span><span>Decisions are proposals. Review exceptions before publishing a schedule.</span></footer>
+    </main>
+  </div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

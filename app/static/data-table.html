@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6445dc">
+  <title>Data table | Yotta Flex</title>
+  <link rel="stylesheet" href="/static/data-table.css">
+</head>
+<body>
+  <div class="page-glow page-glow-one"></div>
+  <div class="page-glow page-glow-two"></div>
+  <main class="workspace">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Return to Yotta Flex dashboard">
+        <span class="brand-mark">Y</span>
+        <span class="brand-name">Yotta Flex <small>ACADEMIC PLANNING</small></span>
+      </a>
+      <a class="back-link" href="/">← <span>Back to planning dashboard</span></a>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow"><span class="eyebrow-dot"></span> PORTABLE DATA / TABLE VIEW</div>
+        <h1 id="pageTitle">Loading data table…</h1>
+        <p id="pageDescription">Browse, search, and sort records in a readable table.</p>
+      </div>
+      <div class="hero-icon" aria-hidden="true">▤</div>
+    </section>
+
+    <section class="stats" aria-label="Dataset summary">
+      <article class="stat-card stat-card-purple"><span class="stat-icon">▦</span><div><span class="stat-label">Total records</span><strong id="totalRecords">—</strong></div></article>
+      <article class="stat-card stat-card-blue"><span class="stat-icon">☷</span><div><span class="stat-label">Fields</span><strong id="totalColumns">—</strong></div></article>
+      <article class="stat-card stat-card-mint"><span class="stat-icon">◉</span><div><span class="stat-label">Current page</span><strong id="currentPage">—</strong></div></article>
+    </section>
+
+    <section class="data-card">
+      <div class="card-heading">
+        <div><div class="section-kicker">RECORD BROWSER</div><h2>Explore records</h2></div>
+        <a id="downloadCsv" class="download-button" href="#" target="_blank" rel="noopener"><span>⇩</span> Download CSV</a>
+      </div>
+      <div class="toolbar">
+        <label class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Search any field…" autocomplete="off">
+          <kbd>ENTER</kbd>
+        </label>
+        <label class="page-size">Rows
+          <select id="pageSize"><option>25</option><option>50</option><option>100</option></select>
+        </label>
+        <span id="sortHint" class="sort-hint">Click a column heading to sort</span>
+      </div>
+      <div id="errorBanner" class="error-banner" role="alert" hidden></div>
+      <div class="table-scroll">
+        <table>
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"><tr><td class="loading-cell">Loading records…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span id="rangeLabel">Loading records…</span>
+        <nav class="pagination" aria-label="Table pages">
+          <button id="previousPage" type="button" aria-label="Previous page">← Previous</button>
+          <span id="pageLabel">Page 1</span>
+          <button id="nextPage" type="button" aria-label="Next page">Next →</button>
+        </nav>
+      </div>
+    </section>
+
+    <footer><span>YOTTA FLEX · ACADEMIC PLANNING</span><span id="footerNote">CSV data is searchable and sortable.</span></footer>
+  </main>
+  <script src="/static/data-table.js" defer></script>
+</body>
+</html>
