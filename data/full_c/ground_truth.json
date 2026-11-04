@@ -1,0 +1,47 @@
+[
+  {
+    "id": "GTC-000001",
+    "issue_type": "faculty_outside_skillset",
+    "entity_type": "faculty",
+    "entity_id": "FAC-000001",
+    "related_entity_id": "CRS-000001",
+    "expected_decision": "reject_assignment",
+    "details": "Proposed course is outside the faculty member's declared skills."
+  },
+  {
+    "id": "GTC-000002",
+    "issue_type": "workload_exceeded",
+    "entity_type": "faculty",
+    "entity_id": "FAC-000001",
+    "related_entity_id": "CRS-001000",
+    "expected_decision": "reject_assignment",
+    "details": "Scenario adds 10 weekly hours; limit is 9."
+  },
+  {
+    "id": "GTC-000003",
+    "issue_type": "section_capacity_too_low",
+    "entity_type": "course",
+    "entity_id": "CRS-000001",
+    "related_entity_id": "ROM-000001",
+    "expected_decision": "split_or_record_unmet_demand",
+    "details": "Scenario demand exceeds the referenced room's seating capacity."
+  },
+  {
+    "id": "GTC-000004",
+    "issue_type": "prerequisite_order_violation",
+    "entity_type": "course",
+    "entity_id": "CRS-000101",
+    "related_entity_id": "CRS-000001",
+    "expected_decision": "reject_schedule",
+    "details": "Scenario places the course before its prerequisite."
+  },
+  {
+    "id": "GTC-000005",
+    "issue_type": "duplicate_section_assignment",
+    "entity_type": "section",
+    "entity_id": "SCN-2026-000001",
+    "related_entity_id": "FAC-000001",
+    "expected_decision": "reject_duplicate",
+    "details": "Scenario submits a second assignment for the same section and faculty."
+  }
+]

@@ -1,0 +1,6 @@
+id,issue_type,entity_type,entity_id,related_entity_id,expected_decision,details
+GTC-000001,faculty_outside_skillset,faculty,FAC-000001,CRS-000001,reject_assignment,Proposed course is outside the faculty member's declared skills.
+GTC-000002,workload_exceeded,faculty,FAC-000001,CRS-001000,reject_assignment,Scenario adds 10 weekly hours; limit is 9.
+GTC-000003,section_capacity_too_low,course,CRS-000001,ROM-000001,split_or_record_unmet_demand,Scenario demand exceeds the referenced room's seating capacity.
+GTC-000004,prerequisite_order_violation,course,CRS-000101,CRS-000001,reject_schedule,Scenario places the course before its prerequisite.
+GTC-000005,duplicate_section_assignment,section,SCN-2026-000001,FAC-000001,reject_duplicate,Scenario submits a second assignment for the same section and faculty.

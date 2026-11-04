@@ -1,0 +1,22 @@
+{
+  "valid": true,
+  "issues": [],
+  "row_counts": {
+    "programs": 100,
+    "courses": 1000,
+    "prerequisites": 238,
+    "student_plans": 20000,
+    "registration_interests": 80066,
+    "faculty": 500,
+    "faculty_skills": 3013,
+    "availabilities": 37500,
+    "rooms": 500,
+    "forecast_runs": 1,
+    "forecasts": 1000,
+    "sections": 974,
+    "workload_assignments": 974,
+    "unmet_demand": 26,
+    "state_events": 1977,
+    "ground_truth_cases": 5
+  }
+}

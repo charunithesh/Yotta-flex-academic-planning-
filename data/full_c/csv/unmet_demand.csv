@@ -1,0 +1,27 @@
+id,run_id,course_id,unmet_seats,reason,details
+1,FR-2026-000001,CRS-000056,17,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+2,FR-2026-000001,CRS-000075,21,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+3,FR-2026-000001,CRS-000341,11,no_skilled_faculty,No active faculty member has an effective skill for this course.
+4,FR-2026-000001,CRS-000391,18,no_skilled_faculty,No active faculty member has an effective skill for this course.
+5,FR-2026-000001,CRS-000413,14,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+6,FR-2026-000001,CRS-000415,24,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+7,FR-2026-000001,CRS-000453,21,no_skilled_faculty,No active faculty member has an effective skill for this course.
+8,FR-2026-000001,CRS-000462,44,no_skilled_faculty,No active faculty member has an effective skill for this course.
+9,FR-2026-000001,CRS-000508,17,no_skilled_faculty,No active faculty member has an effective skill for this course.
+10,FR-2026-000001,CRS-000563,24,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+11,FR-2026-000001,CRS-000615,12,no_skilled_faculty,No active faculty member has an effective skill for this course.
+12,FR-2026-000001,CRS-000677,26,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+13,FR-2026-000001,CRS-000805,41,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+14,FR-2026-000001,CRS-000845,21,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+15,FR-2026-000001,CRS-000856,35,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+16,FR-2026-000001,CRS-000887,10,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+17,FR-2026-000001,CRS-000977,25,no_skilled_faculty,No active faculty member has an effective skill for this course.
+18,FR-2026-000001,CRS-000419,16,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+19,FR-2026-000001,CRS-000464,25,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+20,FR-2026-000001,CRS-000545,20,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+21,FR-2026-000001,CRS-000620,20,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+22,FR-2026-000001,CRS-000804,11,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+23,FR-2026-000001,CRS-000913,26,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
+24,FR-2026-000001,CRS-000205,18,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+25,FR-2026-000001,CRS-000745,19,faculty_unavailable,Skilled faculty have no available meeting slot in this term.
+26,FR-2026-000001,CRS-000556,19,capacity_or_workload,"Available rooms, faculty workload, or meeting slots cannot cover remaining seats."
