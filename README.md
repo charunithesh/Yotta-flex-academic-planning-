@@ -22,21 +22,104 @@ Yotta Flex is a local academic-planning prototype that brings those inputs into 
 
 ## Run from a terminal
 
-Run these commands in **PowerShell from the project root** (the directory containing `requirements.txt`). Python 3.11 or newer is required.
+Follow these steps to run the project on your computer. You need **Python 3.11 or newer** and **Git**. These commands create a private Python virtual environment in `.venv`, install the project dependencies, generate sample data, and start the website.
+
+### 1. Download the project
+
+Open a terminal and clone the GitHub repository:
+
+```shell
+git clone https://github.com/charunithesh/Yotta-flex-academic-planning-.git
+cd Yotta-flex-academic-planning-
+```
+
+### 2. Create and install the Python environment
+
+Choose the commands for your operating system. Run them from the project folder (the folder containing `requirements.txt`).
+
+**Windows — PowerShell**
 
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+**macOS or Linux — Terminal**
+
+```shell
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### 3. Generate the sample dataset (first run only)
+
+This command creates reproducible starter data, an initial forecast, and portable exports in `data/exports`:
+
+**Windows — PowerShell**
+
+```powershell
 .\.venv\Scripts\python.exe -m app.cli generate --scale starter --seed 20261022
+```
+
+**macOS or Linux**
+
+```shell
+python -m app.cli generate --scale starter --seed 20261022
+```
+
+Dataset generation is for a **new, empty database** and will not overwrite existing data. If you already have a populated database, skip this step. To generate a fresh dataset without changing your existing one, use a separate database file (see the database note below).
+
+### 4. Start the website
+
+Keep the terminal open while the server is running:
+
+**Windows — PowerShell**
+
+```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.api:app --reload
 ```
 
-The `generate` command creates the starter dataset, an initial `2026-Fall` planning run, and portable exports under `data/exports`. It only writes source data into an empty database; it does not overwrite existing data. If you already have a populated database, skip the `generate` command and start the server with the final command.
+**macOS or Linux** (activate `.venv` first if you opened a new terminal)
 
-Open the dashboard at <http://127.0.0.1:8000>. The API documentation is at <http://127.0.0.1:8000/docs>, and the health check is at <http://127.0.0.1:8000/api/health>. Stop the development server with **Ctrl+C**.
+```shell
+source .venv/bin/activate
+python -m uvicorn app.api:app --reload
+```
 
-The default SQLite database is `data/yotta_flex.db`. To use another SQLAlchemy database URL, set `DATABASE_URL` before starting the CLI or server. SQLite foreign-key checks are enabled. The dashboard can also generate starter data; generation still requires an empty database. Use a separate database URL for a fresh dataset rather than deleting existing data.
+When Uvicorn reports that it is running, open:
+
+- **Dashboard:** <http://127.0.0.1:8000>
+- **API documentation:** <http://127.0.0.1:8000/docs>
+- **Health check:** <http://127.0.0.1:8000/api/health>
+
+To shut down the development server, focus the terminal and press **Ctrl+C**. To use the app again later, reopen a terminal in the project folder, activate the virtual environment on macOS/Linux, and repeat step 4. You do not need to reinstall packages or regenerate data each time.
+
+### Troubleshooting and data location
+
+- **`git` or `py` is not recognized:** install Git and Python 3.11+, then reopen the terminal. On Windows, the Python launcher is `py`; on macOS/Linux, use `python3`.
+- **Port 8000 is already in use:** start Uvicorn on another port, for example `.\.venv\Scripts\python.exe -m uvicorn app.api:app --reload --port 8001` on Windows, or `python -m uvicorn app.api:app --reload --port 8001` on macOS/Linux. Then open <http://127.0.0.1:8001>.
+- **Data already exists:** skip generation. The app uses the local SQLite database at `data/yotta_flex.db` by default and preserves existing records. To create a separate fresh database, set `DATABASE_URL` before generating **and keep it set when starting the server**:
+
+  **Windows — PowerShell**
+
+  ```powershell
+  $env:DATABASE_URL = "sqlite:///./data/yotta_flex_demo.db"
+  .\.venv\Scripts\python.exe -m app.cli generate --scale starter --seed 20261022
+  .\.venv\Scripts\python.exe -m uvicorn app.api:app --reload
+  ```
+
+  **macOS or Linux**
+
+  ```shell
+  export DATABASE_URL="sqlite:///./data/yotta_flex_demo.db"
+  python -m app.cli generate --scale starter --seed 20261022
+  python -m uvicorn app.api:app --reload
+  ```
+
+SQLite foreign-key checks are enabled. To use another SQLAlchemy database, set `DATABASE_URL` before starting the CLI or server.
 
 ## Workflow
 
