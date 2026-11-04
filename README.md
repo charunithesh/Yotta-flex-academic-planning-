@@ -38,6 +38,17 @@ Open the dashboard at <http://127.0.0.1:8000>. The API documentation is at <http
 
 The default SQLite database is `data/yotta_flex.db`. To use another SQLAlchemy database URL, set `DATABASE_URL` before starting the CLI or server. SQLite foreign-key checks are enabled. The dashboard can also generate starter data; generation still requires an empty database. Use a separate database URL for a fresh dataset rather than deleting existing data.
 
+## Deploy a free hosted demo
+
+The repository includes a Render Blueprint in `render.yaml` for deploying this FastAPI application from GitHub:
+
+1. Sign in to [Render](https://render.com/) and choose **New → Blueprint**.
+2. Connect `charunithesh/Yotta-flex-academic-planning-` and select the `main` branch.
+3. Review and apply the Blueprint. Render builds the Python app, starts Uvicorn, and checks `/api/health`.
+4. Open the public `onrender.com` URL Render assigns to the service, then use **Generate source data** in the dashboard.
+
+Automatic deploys are enabled for future pushes to `main`. Render's free web services sleep after 15 minutes without traffic and use an ephemeral filesystem. **The SQLite database and generated data will be lost on a restart, sleep, or redeploy.** This setup is for demos only, not persistent records or production use. Persistent hosting and storage require a paid hosting/database configuration.
+
 ## Workflow
 
 1. Generate master and source records in parent-first order: programs, courses/prerequisites, faculty/skills, rooms/availability, student plans, registration interest, and labeled scenario fixtures.
