@@ -119,13 +119,29 @@ async function loadRun(runId) {
     : "VALIDATION FAILED";
   $("#latestStatus").className = `status-pill ${validation.valid ? (detail.unmet_seats ? "status-warning" : "status-success") : "status-warning"}`;
   $("#latestRunLink").textContent = `${detail.run_id} · ${detail.assignment_count} assignments · ${validation.issues.length} constraint violations`;
+  $("#forecastMethodNote").textContent = `${detail.forecasting_method} · ${detail.forecast_timestamp}`;
   $("#forecastTable").innerHTML = detail.forecasts.slice(0, 18).map((row) => `
-    <tr><td>${escapeHtml(row.course_id)} · ${escapeHtml(row.course)}</td><td>${number(Math.round(row.historical_demand))}</td><td>${number(row.current_interest)}</td><td><strong>${number(row.forecast_enrollment)}</strong></td></tr>
-  `).join("") || '<tr><td class="empty-cell" colspan="4">No courses in this forecast.</td></tr>';
+    <tr><td>${escapeHtml(row.course_id)} · ${escapeHtml(row.course)}</td><td>${number(Math.round(row.historical_demand))}</td><td>${number(row.current_interest)}</td><td><strong>${number(row.forecast_enrollment)}</strong></td><td>${number(row.recommended_section_count)}</td></tr>
+  `).join("") || '<tr><td class="empty-cell" colspan="5">No courses in this forecast.</td></tr>';
   $("#unmetTable").innerHTML = detail.unmet_demand.map((row) => `
     <tr><td>${escapeHtml(row.course_id)} · ${escapeHtml(row.course)}</td><td>${number(row.unmet_seats)}</td><td title="${escapeHtml(row.details)}">${escapeHtml(row.reason.replaceAll("_", " "))}</td></tr>
   `).join("") || '<tr><td class="empty-cell" colspan="3">All forecast demand was assigned.</td></tr>';
   $("#unmetBadge").textContent = `${detail.unmet_course_count} course${detail.unmet_course_count === 1 ? "" : "s"}`;
+}
+
+function renderForecastEvaluation(result) {
+  const summary = result.overall;
+  const formatMetric = (value) => value === null ? "N/A" : number(value);
+  $("#evaluationObservationCount").textContent = `${number(summary.observations)} course-term observations`;
+  $("#evaluationMae").textContent = formatMetric(summary.mae);
+  $("#evaluationRmse").textContent = formatMetric(summary.rmse);
+  $("#evaluationWape").textContent = summary.wape === null
+    ? "N/A"
+    : `${(summary.wape * 100).toFixed(1)}%`;
+  $("#evaluationMethodNote").textContent = `${result.method}: ${result.leakage_prevention}`;
+  $("#evaluationTable").innerHTML = result.evaluations.map((item) => `
+    <tr><td>${escapeHtml(item.term)}</td><td>${escapeHtml(item.course_id)} · ${escapeHtml(item.course)}</td><td>${item.training_terms.map(escapeHtml).join(", ")}</td><td>${number(item.forecast_enrollment)}</td><td>${number(item.actual_enrollment)}</td></tr>
+  `).join("") || '<tr><td class="empty-cell" colspan="5">At least two academic terms are required for a walk-forward evaluation.</td></tr>';
 }
 
 async function loadGroundTruth() {
@@ -143,6 +159,8 @@ async function loadDashboard() {
   renderRuns(dashboard.runs);
   renderLatest(dashboard.runs[0]);
   if (dashboard.runs.length) await loadRun(dashboard.runs[0].run_id);
+  const evaluation = await request("/api/forecast/evaluation");
+  renderForecastEvaluation(evaluation);
   await loadGroundTruth();
 }
 

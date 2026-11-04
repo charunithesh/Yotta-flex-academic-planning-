@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
+from math import ceil, sqrt
 from typing import Any
 
 from sqlalchemy import and_, func, or_, select
@@ -29,10 +30,82 @@ from app.models import (
 ACTIVE_INTEREST_STATUSES = ("registered", "waitlisted", "interested")
 HISTORICAL_STATUSES = ("registered", "waitlisted")
 SEASON_ORDER = {"Spring": 1, "Summer": 2, "Fall": 3}
+FORECAST_METHODS = {
+    0: "current_interest_only",
+    1: "weighted_one_term_history_plus_current_interest",
+    2: "weighted_two_term_history_plus_current_interest",
+}
 
 
 class WorkflowError(ValueError):
     """A user-correctable error in the academic planning workflow."""
+
+
+def _forecast_method(history_term_count: int) -> str:
+    return FORECAST_METHODS[min(history_term_count, 2)]
+
+
+def _forecast_enrollment(
+    history: list[int], current_interest: int
+) -> tuple[float, int, str]:
+    if len(history) >= 2:
+        historical_average = 0.70 * history[-1] + 0.30 * history[-2]
+        forecast = round(
+            0.55 * history[-1] + 0.30 * history[-2] + 0.15 * current_interest
+        )
+    elif history:
+        historical_average = float(history[-1])
+        forecast = round(0.70 * history[-1] + 0.30 * current_interest)
+    else:
+        historical_average = float(current_interest)
+        forecast = current_interest
+    return (
+        historical_average,
+        max(0, forecast),
+        _forecast_method(len(history)),
+    )
+
+
+def _recommended_section_count(enrollment: int, section_capacity: int) -> int:
+    return ceil(enrollment / section_capacity) if enrollment else 0
+
+
+def _accuracy_metrics(observations: list[dict[str, Any]]) -> dict[str, Any]:
+    if not observations:
+        return {
+            "observations": 0,
+            "mae": None,
+            "rmse": None,
+            "wape": None,
+            "actual_enrollment": 0,
+            "forecast_enrollment": 0,
+        }
+
+    absolute_errors = [
+        abs(item["forecast_enrollment"] - item["actual_enrollment"])
+        for item in observations
+    ]
+    actual_enrollment = sum(item["actual_enrollment"] for item in observations)
+    return {
+        "observations": len(observations),
+        "mae": round(sum(absolute_errors) / len(absolute_errors), 4),
+        "rmse": round(
+            sqrt(
+                sum(error**2 for error in absolute_errors)
+                / len(absolute_errors)
+            ),
+            4,
+        ),
+        "wape": (
+            round(sum(absolute_errors) / actual_enrollment, 4)
+            if actual_enrollment
+            else None
+        ),
+        "actual_enrollment": actual_enrollment,
+        "forecast_enrollment": sum(
+            item["forecast_enrollment"] for item in observations
+        ),
+    }
 
 
 def _term_key(term: str) -> tuple[int, int]:
@@ -190,16 +263,9 @@ def run_forecast_and_allocation(
             sum(course_demand.get(term, {}).get(status, 0) for status in HISTORICAL_STATUSES)
             for term in historical_terms
         ]
-        if len(history) >= 2:
-            historical_average = 0.70 * history[-1] + 0.30 * history[-2]
-            forecast = round(0.55 * history[-1] + 0.30 * history[-2] + 0.15 * current_interest)
-        elif history:
-            historical_average = float(history[-1])
-            forecast = round(0.70 * history[-1] + 0.30 * current_interest)
-        else:
-            historical_average = float(current_interest)
-            forecast = current_interest
-        forecast = max(0, forecast)
+        historical_average, forecast, _method = _forecast_enrollment(
+            history, current_interest
+        )
         forecast_by_course[course.id] = forecast
         forecast_rows.append(
             ForecastRecord(
@@ -465,12 +531,22 @@ def get_run_metrics(session: Session, run_id: str) -> dict[str, Any]:
     offered_capacity = sum(section.capacity for section in sections)
     unmet = sum(row.unmet_seats for row in unmet_rows)
     utilization = round(allocated / offered_capacity, 4) if offered_capacity else 0.0
+    window_terms = [term for term in run.window_terms.split(",") if term]
+    forecasting_method = _forecast_method(len(window_terms))
     return {
         "run_id": run.id,
         "target_term": run.target_term,
-        "window_terms": [term for term in run.window_terms.split(",") if term],
+        "window_terms": window_terms,
+        "forecasting_method": forecasting_method,
+        "forecast_timestamp": run.created_at.isoformat(),
         "status": run.status,
         "forecasted_enrollment": forecasted,
+        "recommended_section_count": sum(
+            _recommended_section_count(
+                enrollment, settings.max_section_capacity
+            )
+            for enrollment in forecasted_by_course.values()
+        ),
         "allocated_seats": allocated,
         "offered_capacity": offered_capacity,
         "unmet_seats": unmet,
@@ -480,6 +556,125 @@ def get_run_metrics(session: Session, run_id: str) -> dict[str, Any]:
         "unmet_course_count": len(unmet_rows),
         "seat_utilization": utilization,
         "created_at": run.created_at.isoformat(),
+    }
+
+
+def evaluate_forecasts(
+    session: Session, target_term: str | None = None
+) -> dict[str, Any]:
+    """Evaluate historical-only forecasts using a chronological holdout."""
+    grouped_counts = session.execute(
+        select(
+            RegistrationInterest.term,
+            RegistrationInterest.course_id,
+            RegistrationInterest.status,
+            func.count(),
+        ).group_by(
+            RegistrationInterest.term,
+            RegistrationInterest.course_id,
+            RegistrationInterest.status,
+        )
+    ).all()
+    demand: dict[str, dict[str, dict[str, int]]] = defaultdict(
+        lambda: defaultdict(dict)
+    )
+    terms: set[str] = set()
+    for term, course_id, status, count in grouped_counts:
+        terms.add(term)
+        demand[course_id][term][status] = count
+
+    chronological_terms = sorted(terms, key=_term_key)
+    if target_term is not None:
+        _term_key(target_term)
+        if target_term not in terms:
+            raise WorkflowError(
+                f"No registration history was found for term {target_term!r}."
+            )
+        if chronological_terms.index(target_term) == 0:
+            raise WorkflowError(
+                f"No earlier registration history is available for term {target_term!r}."
+            )
+    courses = session.execute(
+        select(Course.id, Course.title, Course.program_id)
+        .where(Course.lifecycle_state == "active")
+        .order_by(Course.id)
+    ).all()
+
+    evaluations: list[dict[str, Any]] = []
+    for index, term in enumerate(chronological_terms):
+        if index == 0 or (target_term is not None and term != target_term):
+            continue
+        training_terms = chronological_terms[max(0, index - 2) : index]
+        for course_id, course_title, program_id in courses:
+            course_demand = demand.get(course_id, {})
+            history = [
+                sum(
+                    course_demand.get(history_term, {}).get(status, 0)
+                    for status in HISTORICAL_STATUSES
+                )
+                for history_term in training_terms
+            ]
+            _historical_average, forecast, _method = _forecast_enrollment(
+                history, current_interest=0
+            )
+            actual = course_demand.get(term, {}).get("registered", 0)
+            evaluations.append(
+                {
+                    "term": term,
+                    "training_terms": training_terms,
+                    "course_id": course_id,
+                    "course": course_title,
+                    "program_id": program_id,
+                    "forecast_enrollment": forecast,
+                    "actual_enrollment": actual,
+                }
+            )
+
+    evaluations_by_term: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    evaluations_by_course: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in evaluations:
+        evaluations_by_term[item["term"]].append(item)
+        evaluations_by_course[item["course_id"]].append(item)
+
+    by_term = []
+    for term in chronological_terms:
+        term_evaluations = evaluations_by_term[term]
+        if term_evaluations:
+            by_term.append(
+                {
+                    "term": term,
+                    "training_terms": term_evaluations[0]["training_terms"],
+                    **_accuracy_metrics(term_evaluations),
+                }
+            )
+
+    by_course = []
+    for course_id, course_title, program_id in courses:
+        course_evaluations = evaluations_by_course[course_id]
+        if course_evaluations:
+            by_course.append(
+                {
+                    "course_id": course_id,
+                    "course": course_title,
+                    "program_id": program_id,
+                    **_accuracy_metrics(course_evaluations),
+                }
+            )
+
+    return {
+        "method": "walk_forward_historical_only",
+        "actual_definition": (
+            "Actual enrollment is the count of registered records in the holdout term."
+        ),
+        "leakage_prevention": (
+            "Each holdout forecast uses only earlier terms; holdout-term records "
+            "are excluded from prediction. Waitlisted records are included in "
+            "historical demand, not actual enrollment."
+        ),
+        "overall": _accuracy_metrics(evaluations),
+        "by_term": by_term,
+        "by_course": by_course,
+        "evaluations": evaluations,
     }
 
 
@@ -527,6 +722,12 @@ def get_run_details(session: Session, run_id: str) -> dict[str, Any]:
                 "historical_demand": row[2],
                 "current_interest": row[3],
                 "forecast_enrollment": row[4],
+                "recommended_section_count": _recommended_section_count(
+                    row[4], settings.max_section_capacity
+                ),
+                "forecasting_method": metrics["forecasting_method"],
+                "forecast_run_id": run_id,
+                "forecast_timestamp": metrics["forecast_timestamp"],
             }
             for row in forecast
         ],

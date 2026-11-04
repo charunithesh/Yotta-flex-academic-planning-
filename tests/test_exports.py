@@ -44,6 +44,40 @@ class DashboardExportTests(unittest.TestCase):
         app.dependency_overrides.pop(get_db, None)
         self.engine.dispose()
 
+    def test_forecast_evaluation_endpoint_returns_leakage_safe_metrics(self):
+        response = self.client.get("/api/forecast/evaluation")
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()
+
+        self.assertEqual(result["method"], "walk_forward_historical_only")
+        self.assertEqual(
+            [item["term"] for item in result["by_term"]],
+            ["2026-Spring", "2026-Fall"],
+        )
+        self.assertGreater(result["overall"]["observations"], 0)
+        self.assertIsNotNone(result["overall"]["mae"])
+        self.assertIsNotNone(result["overall"]["rmse"])
+        self.assertIsNotNone(result["overall"]["wape"])
+        self.assertTrue(
+            all(item["term"] not in item["training_terms"] for item in result["evaluations"])
+        )
+
+        holdout = self.client.get("/api/forecast/evaluation?term=2026-Spring")
+        self.assertEqual(holdout.status_code, 200, holdout.text)
+        self.assertEqual(len(holdout.json()["by_term"]), 1)
+        self.assertEqual(
+            self.client.get("/api/forecast/evaluation?term=bad-term").status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.get("/api/forecast/evaluation?term=2027-Fall").status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.get("/api/forecast/evaluation?term=2025-Fall").status_code,
+            422,
+        )
+
     def test_dashboard_controls_and_every_portable_export_work(self):
         self.assertEqual(self.client.get("/").status_code, 200)
         self.assertEqual(self.client.get("/static/app.css").status_code, 200)

@@ -21,6 +21,7 @@ from app.generator import DEFAULT_SEED, GeneratorConfig, generate_dataset
 from app.models import GroundTruthCase
 from app.services import (
     WorkflowError,
+    evaluate_forecasts,
     get_dashboard,
     get_run_details,
     run_forecast_and_allocation,
@@ -110,6 +111,17 @@ def forecast(payload: ForecastRequest, db: Session = Depends(get_db)) -> dict:
         raise
     logger.info("Completed forecast and allocation run %s", result["run_id"])
     return result
+
+
+@app.get("/api/forecast/evaluation")
+def forecast_evaluation(
+    term: str | None = Query(default=None, pattern=r"^\d{4}-(Spring|Summer|Fall)$"),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        return evaluate_forecasts(db, target_term=term)
+    except WorkflowError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/api/runs/{run_id}")

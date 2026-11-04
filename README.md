@@ -46,6 +46,7 @@ The default SQLite database is `data/yotta_flex.db`. To use another SQLAlchemy d
    - One historical term: `round(0.70 × latest + 0.30 × current interest)`.
    - No history: current interest.
    - Historical counts include registered and waitlisted records; current interest includes registered, waitlisted and interested records.
+   - Each course result includes its forecasting method, run ID and timestamp, plus a recommended section count based on forecast enrollment and `MAX_SECTION_CAPACITY`.
 3. Allocate sections in prerequisite order. A proposal requires an active room, an effective faculty skill, an available time slot, no collision with an approved section, and remaining approved weekly workload. Earlier proposed runs are alternatives and do not consume resources; approving a section makes its room and faculty assignment count against later runs. Section capacity is bounded by room capacity and `MAX_SECTION_CAPACITY` (default 60).
 4. Persist the forecast, proposals, assignments, unmet seats, and state-event history. Runs are appended; prior runs and their identifiers remain unchanged.
 5. Inspect metrics and exceptions in the dashboard or API. A run reconciles when `forecasted seats = allocated seats + unmet seats`.
@@ -112,11 +113,14 @@ python -m app.cli export --output data/exports
 - `GET /api/dashboard`
 - `POST /api/data/generate` — `{ "scale": "starter", "seed": 20261022 }`
 - `POST /api/forecast` — `{ "target_term": "2026-Fall", "seed": 20261022 }`
+- `GET /api/forecast/evaluation` — leakage-safe walk-forward MAE, RMSE, and WAPE across historical terms. Add `?term=2026-Fall` to evaluate one holdout term.
 - `GET /api/runs/{run_id}` and `GET /api/runs/{run_id}/validation`
 - `GET /api/scenarios/ground-truth`
 - `GET /tables/{dataset}` opens a searchable, sortable, paginated table in a new browser tab.
 - `GET /api/tables/{dataset}` serves a page of structured table data; supports `offset`, `limit` (up to 100), `search`, `sort`, and `direction`.
 - `GET /api/exports/{operational_table}.csv` and `/api/exports/ground_truth.csv` download the original CSV from each table view.
+
+Forecast evaluation holds out each target term chronologically: predictions use only earlier terms, with no registration-interest records from the holdout term. Historical demand includes registered and waitlisted records; actual enrollment counts registered records only. MAE is the mean absolute error per course-term observation, RMSE is its root-mean-square counterpart, and WAPE is total absolute error divided by total actual enrollment. WAPE is unavailable when total actual enrollment is zero. At least two terms are required for evaluation.
 
 ## Tests
 

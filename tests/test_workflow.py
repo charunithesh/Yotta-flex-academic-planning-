@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import unittest
+from math import sqrt
 
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, select, update
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import Base
 from app.generator import GeneratorConfig, generate_dataset
 from app.models import (
@@ -24,7 +26,13 @@ from app.models import (
     UnmetDemand,
     WorkloadAssignment,
 )
-from app.services import run_forecast_and_allocation, validate_run
+from app.services import (
+    WorkflowError,
+    evaluate_forecasts,
+    get_run_details,
+    run_forecast_and_allocation,
+    validate_run,
+)
 
 
 def new_session():
@@ -96,6 +104,8 @@ class PlanningWorkflowTests(unittest.TestCase):
         )
         result = run_forecast_and_allocation(self.session, "2026-Fall", 20261022)
         self.assertTrue(result["reconciles"])
+        self.assertIn("forecasting_method", result)
+        self.assertGreaterEqual(result["recommended_section_count"], 0)
         self.assertEqual(
             result["forecasted_enrollment"],
             result["allocated_seats"] + result["unmet_seats"],
@@ -111,6 +121,31 @@ class PlanningWorkflowTests(unittest.TestCase):
 
         report = validate_run(self.session, result["run_id"])
         self.assertTrue(report["valid"], report["issues"])
+        details = get_run_details(self.session, result["run_id"])
+        self.assertEqual(details["forecasting_method"], result["forecasting_method"])
+        self.assertEqual(details["forecast_timestamp"], result["forecast_timestamp"])
+        self.assertTrue(
+            all(
+                row["recommended_section_count"] >= 0
+                and row["forecast_run_id"] == result["run_id"]
+                and row["forecast_timestamp"] == result["forecast_timestamp"]
+                for row in details["forecasts"]
+            )
+        )
+        self.assertEqual(
+            result["recommended_section_count"],
+            sum(row["recommended_section_count"] for row in details["forecasts"]),
+        )
+        self.assertTrue(
+            all(
+                row["recommended_section_count"]
+                == (
+                    (row["forecast_enrollment"] + settings.max_section_capacity - 1)
+                    // settings.max_section_capacity
+                )
+                for row in details["forecasts"]
+            )
+        )
         for section in self.session.scalars(select(Section).where(Section.run_id == result["run_id"])):
             room = self.session.get(Room, section.room_id)
             course = self.session.get(Course, section.course_id)
@@ -122,6 +157,99 @@ class PlanningWorkflowTests(unittest.TestCase):
             self.assertLessEqual(section.capacity, 60)
             self.assertLessEqual(assignment.weekly_hours, instructor.weekly_workload_limit)
             self.assertIsNotNone(course)
+
+    def test_walk_forward_evaluation_excludes_holdout_demand(self):
+        generate_dataset(
+            self.session,
+            GeneratorConfig(programs=3, courses=15, faculty=9, student_plans=90, seed=20261022),
+        )
+
+        result = evaluate_forecasts(self.session)
+
+        self.assertEqual(result["method"], "walk_forward_historical_only")
+        self.assertEqual(
+            [item["term"] for item in result["by_term"]],
+            ["2026-Spring", "2026-Fall"],
+        )
+        self.assertEqual(result["overall"]["observations"], 30)
+        term_order = ["2025-Fall", "2026-Spring", "2026-Fall"]
+        for item in result["evaluations"]:
+            self.assertNotIn(item["term"], item["training_terms"])
+            self.assertTrue(
+                all(
+                    term_order.index(training_term) < term_order.index(item["term"])
+                    for training_term in item["training_terms"]
+                )
+            )
+
+        spring_evaluation = next(
+            item
+            for item in result["evaluations"]
+            if item["term"] == "2026-Spring"
+        )
+        self.assertEqual(spring_evaluation["training_terms"], ["2025-Fall"])
+        historical_demand = self.session.scalar(
+            select(func.count()).select_from(RegistrationInterest).where(
+                RegistrationInterest.term == "2025-Fall",
+                RegistrationInterest.course_id == spring_evaluation["course_id"],
+                RegistrationInterest.status.in_(("registered", "waitlisted")),
+            )
+        )
+        self.assertEqual(
+            spring_evaluation["forecast_enrollment"],
+            round(0.70 * historical_demand),
+        )
+        registered_actual = self.session.scalar(
+            select(func.count()).select_from(RegistrationInterest).where(
+                RegistrationInterest.term == "2026-Spring",
+                RegistrationInterest.course_id == spring_evaluation["course_id"],
+                RegistrationInterest.status == "registered",
+            )
+        )
+        self.assertEqual(spring_evaluation["actual_enrollment"], registered_actual)
+        self.assertEqual(
+            result["overall"]["observations"], len(result["evaluations"])
+        )
+        absolute_errors = [
+            abs(item["forecast_enrollment"] - item["actual_enrollment"])
+            for item in result["evaluations"]
+        ]
+        total_actual = sum(item["actual_enrollment"] for item in result["evaluations"])
+        self.assertEqual(
+            result["overall"]["mae"],
+            round(sum(absolute_errors) / len(absolute_errors), 4),
+        )
+        self.assertEqual(
+            result["overall"]["rmse"],
+            round(sqrt(sum(error**2 for error in absolute_errors) / len(absolute_errors)), 4),
+        )
+        self.assertEqual(
+            result["overall"]["wape"],
+            round(sum(absolute_errors) / total_actual, 4) if total_actual else None,
+        )
+
+        holdout = evaluate_forecasts(self.session, target_term="2026-Spring")
+        self.assertEqual(len(holdout["by_term"]), 1)
+        self.assertEqual(holdout["by_term"][0]["term"], "2026-Spring")
+        with self.assertRaises(WorkflowError):
+            evaluate_forecasts(self.session, target_term="2027-Fall")
+
+    def test_walk_forward_wape_is_undefined_when_actuals_are_zero(self):
+        generate_dataset(
+            self.session,
+            GeneratorConfig(programs=2, courses=8, faculty=8, student_plans=48, seed=42),
+        )
+        self.session.execute(
+            update(RegistrationInterest)
+            .where(RegistrationInterest.term.in_(("2026-Spring", "2026-Fall")))
+            .values(status="waitlisted")
+        )
+        self.session.commit()
+
+        result = evaluate_forecasts(self.session)
+
+        self.assertEqual(result["overall"]["actual_enrollment"], 0)
+        self.assertIsNone(result["overall"]["wape"])
 
     def test_runs_append_without_replacing_history(self):
         generate_dataset(

@@ -111,11 +111,30 @@
         </div>
       </section>
 
+      <section id="forecast-evaluation" class="panel table-panel">
+        <div class="panel-heading">
+          <div><p class="eyebrow">FORECAST QUALITY</p><h2>Historical forecast evaluation</h2></div>
+          <span id="evaluationObservationCount" class="muted-label">Waiting for history</span>
+        </div>
+        <p id="evaluationMethodNote" class="panel-copy small-copy">Walk-forward evaluation forecasts each historical term using earlier terms only.</p>
+        <div class="evaluation-metrics">
+          <article class="evaluation-metric"><span>MAE · seats</span><strong id="evaluationMae">—</strong></article>
+          <article class="evaluation-metric"><span>RMSE · seats</span><strong id="evaluationRmse">—</strong></article>
+          <article class="evaluation-metric"><span>WAPE</span><strong id="evaluationWape">—</strong></article>
+        </div>
+        <div class="table-wrap evaluation-table-wrap">
+          <table>
+            <thead><tr><th>Term</th><th>Course</th><th>Training terms</th><th>Forecast</th><th>Actual enrollment</th></tr></thead>
+            <tbody id="evaluationTable"><tr><td class="empty-cell" colspan="5">Waiting for historical data.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="details-grid">
         <article class="panel detail-panel">
-          <div class="panel-heading"><div><p class="eyebrow">DEMAND SIGNALS</p><h2>Course forecast</h2></div><span class="muted-label">Historical + current interest</span></div>
+          <div class="panel-heading"><div><p class="eyebrow">DEMAND SIGNALS</p><h2>Course forecast</h2></div><span id="forecastMethodNote" class="muted-label">Historical + current interest</span></div>
           <div class="table-wrap compact">
-            <table><thead><tr><th>Course</th><th>History</th><th>Interest</th><th>Forecast</th></tr></thead><tbody id="forecastTable"><tr><td class="empty-cell" colspan="4">Select a run to inspect its demand signals.</td></tr></tbody></table>
+            <table><thead><tr><th>Course</th><th>History</th><th>Interest</th><th>Forecast</th><th>Recommended sections</th></tr></thead><tbody id="forecastTable"><tr><td class="empty-cell" colspan="5">Select a run to inspect its demand signals.</td></tr></tbody></table>
           </div>
         </article>
         <article class="panel detail-panel" id="exceptions">

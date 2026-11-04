@@ -96,6 +96,12 @@ input:focus, select:focus { border-color: #51b9a2; box-shadow: 0 0 0 2px #e2f5ef
 .latest-run-link { color: var(--teal-dark); font-size: 11px; margin-top: 10px; }
 .table-panel { margin-top: 16px; padding-bottom: 8px; }
 .muted-label { color: #78879a; font-size: 12px; }
+.evaluation-metrics { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 12px; }
+.evaluation-metric { background: #f8fafb; border: 1px solid var(--line); border-radius: 6px; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; }
+.evaluation-metric span { color: #78869a; font-size: 11px; }
+.evaluation-metric strong { color: var(--ink); font: 700 20px "Manrope", sans-serif; }
+.evaluation-table-wrap { max-height: 340px; overflow: auto; }
+.evaluation-table-wrap th { position: sticky; top: 0; z-index: 1; }
 .table-wrap { margin-top: 16px; overflow-x: auto; }
 table { border-collapse: collapse; min-width: 650px; text-align: left; width: 100%; }
 th { background: #fafbfd; border-bottom: 1px solid #edf0f3; color: #738196; font-size: 11px; font-weight: 700; letter-spacing: .7px; padding: 12px 13px; text-transform: uppercase; }
@@ -152,6 +158,7 @@ footer { align-items: center; border-top: 1px solid var(--line); color: #a1aab5;
   .form-grid { grid-template-columns: 1fr 1fr; }
   .form-grid label:first-child { grid-column: span 2; }
   .details-grid, .bottom-grid { grid-template-columns: 1fr; }
+  .evaluation-metrics { grid-template-columns: 1fr; }
   .panel { padding: 16px; }
   .scenario-list { grid-template-columns: 1fr 1fr; }
   .export-list { grid-template-columns: 1fr; }
